@@ -1,0 +1,21 @@
+# Build outputs
+index.html
+
+# Temp files
+extracted/
+xl/
+xl.zip
+june_sample.json
+parser.html
+test.html
+optimize_payload.py
+dashboard_sample.json
+excel_base64.txt
+data.zip
+extracted_compact.json
+extracted_data.json
+
+# System
+.gemini/
+*.log
+*.tmp

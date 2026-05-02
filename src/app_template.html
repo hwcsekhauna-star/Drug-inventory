@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drug Inventory Management System</title>
+    <meta name="description" content="Professional Pharmaceutical Drug Inventory Management System">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <!-- Libraries -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #0D9488;
+            --primary-dark: #0F766E;
+            --secondary: #3B82F6;
+            --bg: #F8FAFC;
+            --surface: #FFFFFF;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --success: #22C55E;
+            --warning: #EAB308;
+            --danger: #EF4444;
+            --info: #3B82F6;
+            --sidebar-width: 260px;
+            --header-height: 70px;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); line-height: 1.5; overflow: hidden; }
+
+        /* Layout */
+        .app-shell { display: flex; height: 100vh; width: 100vw; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: #111827;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        .sidebar-header {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #1F2937;
+        }
+        .sidebar-header h2 { font-family: 'Nunito', sans-serif; font-size: 1.25rem; font-weight: 800; color: #5EEAD4; }
+        .nav-list { flex: 1; overflow-y: auto; padding: 16px 12px; }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #9CA3AF;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+            text-decoration: none;
+        }
+        .nav-item:hover { background: #1F2937; color: white; }
+        .nav-item.active { background: var(--primary); color: white; }
+        .nav-item i { width: 20px; height: 20px; }
+        .nav-group-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #4B5563;
+            margin: 16px 16px 8px;
+            font-weight: 600;
+        }
+
+        /* Submenu */
+        .nav-submenu { margin-left: 12px; border-left: 1px solid #1F2937; display: none; }
+        .nav-submenu.open { display: block; }
+        .nav-subitem { padding: 8px 16px 8px 32px; font-size: 0.9rem; }
+
+        /* Main */
+        .main-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .header {
+            height: var(--header-height);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 50;
+        }
+        .search-container { position: relative; width: 400px; }
+        .search-container input {
+            width: 100%;
+            padding: 10px 16px 10px 40px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            outline: none;
+            transition: all 0.2s;
+        }
+        .search-container input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1); }
+        .search-container i { position: absolute; left: 14px; top: 11px; color: var(--text-muted); }
+
+        .content { flex: 1; overflow-y: auto; padding: 32px; }
+        
+        /* Dashboard styles */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px; }
+        .stat-card {
+            background: var(--surface);
+            padding: 24px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-top: 4px solid var(--primary);
+        }
+        .stat-val { font-size: 1.8rem; font-weight: 700; color: var(--text-main); }
+        .stat-label { color: var(--text-muted); font-size: 0.9rem; font-weight: 500; }
+
+        /* Table styles */
+        .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 24px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .card-title { font-size: 1.1rem; font-weight: 600; }
+        .table-container { padding: 0; }
+        table.dataTable { border-collapse: collapse !important; width: 100% !important; margin: 0 !important; }
+        table.dataTable thead th { background: var(--bg); padding: 12px 16px !important; font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border) !important; text-align: left; }
+        table.dataTable tbody td { padding: 12px 16px !important; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_length { padding: 16px 24px; }
+        .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate { padding: 16px 24px; }
+
+        /* Form styles */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 0.9rem; font-weight: 600; color: var(--text-main); }
+        .form-group input, .form-group select { padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; outline: none; font-family: inherit; }
+        .form-group input:focus { border-color: var(--primary); }
+        .btn { padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+        .btn-outline:hover { background: var(--bg); border-color: var(--text-muted); }
+
+        /* Status Badges */
+        .badge { padding: 4px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; }
+        .badge-expired { background: #FEE2E2; color: #B91C1C; }
+        .badge-critical { background: #FFEDD5; color: #9A3412; }
+        .badge-warning { background: #FEF9C3; color: #854D0E; }
+        .badge-safe { background: #DCFCE7; color: #15803D; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.4s ease-out; }
+
+        /* Loader */
+        #loader-overlay { position: fixed; inset: 0; background: white; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(0,0,0,0.1); border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Monthly Grid Overrides */
+        .excel-grid { overflow-x: auto; max-height: 600px; position: relative; }
+        .excel-grid table { border-spacing: 0; border-collapse: separate; }
+        .excel-grid th, .excel-grid td { border: 1px solid var(--border); min-width: 80px; padding: 6px 10px; font-size: 0.85rem; white-space: nowrap; }
+        .excel-grid th { position: sticky; top: 0; background: var(--bg); z-index: 10; }
+        .excel-grid td:first-child, .excel-grid th:first-child { position: sticky; left: 0; background: var(--surface); z-index: 20; min-width: 200px; }
+        .excel-grid th:first-child { z-index: 30; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="loader-overlay">
+        <div style="text-align: center;">
+            <div class="spinner" style="margin: 0 auto 16px;"></div>
+            <p style="font-weight: 600; color: var(--text-muted);">Initializing System...</p>
+        </div>
+    </div>
+
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i data-lucide="cross"></i>
+                <h2>MED-INV PRO</h2>
+            </div>
+            <nav class="nav-list">
+                <div class="nav-group-title">Main</div>
+                <a class="nav-item active" data-view="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a class="nav-item" data-view="batch-register">
+                    <i data-lucide="database"></i>
+                    <span>Batch Register</span>
+                </a>
+                <a class="nav-item" data-view="indent-demand">
+                    <i data-lucide="clipboard-list"></i>
+                    <span>Indent Demand</span>
+                </a>
+
+                <div class="nav-group-title">Inventory Tracking</div>
+                <div class="nav-item" id="monthly-nav">
+                    <i data-lucide="calendar"></i>
+                    <span>Monthly View</span>
+                    <i data-lucide="chevron-down" style="margin-left: auto;"></i>
+                </div>
+                <div class="nav-submenu" id="monthly-submenu">
+                    <!-- Dynamic Month Links -->
+                </div>
+
+                <div class="nav-group-title">Operations</div>
+                <a class="nav-item" data-view="batch-entry">
+                    <i data-lucide="plus-circle"></i>
+                    <span>Batch Entry</span>
+                </a>
+                <a class="nav-item" data-view="receiving-entry">
+                    <i data-lucide="package-plus"></i>
+                    <span>Receiving Entry</span>
+                </a>
+                <a class="nav-item" data-view="batch-inventory">
+                    <i data-lucide="layers"></i>
+                    <span>Batch-wise Stock</span>
+                </a>
+
+                <div class="nav-group-title">Reporting</div>
+                <a class="nav-item" data-view="alerts">
+                    <i data-lucide="bell"></i>
+                    <span>Alerts & Reports</span>
+                </a>
+                <a class="nav-item" data-view="export">
+                    <i data-lucide="download"></i>
+                    <span>Export Data</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-container">
+            <header class="header">
+                <div class="search-container">
+                    <i data-lucide="search"></i>
+                    <input type="text" placeholder="Global Search (Drug, Batch, Supplier...)" id="global-search">
+                </div>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div style="position: relative; cursor: pointer;">
+                        <i data-lucide="bell"></i>
+                        <span id="alert-count" style="position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 10px; display: none;">0</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="text-align: right;">
+                            <p style="font-size: 0.85rem; font-weight: 600;">Pharmacist Admin</p>
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Master Control</p>
+                        </div>
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700;">SP</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content" id="app-viewport">
+                <!-- Dynamic View Content -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // EMBEDDED DATA
+        const SYSTEM_DATA = PLACEHOLDER_JSON;
+
+        // STATE
+        let state = {
+            view: 'dashboard',
+            selectedMonth: 'May 2026',
+            userBatches: JSON.parse(localStorage.getItem('userBatches') || '[]'),
+            userReceivings: JSON.parse(localStorage.getItem('userReceivings') || '[]'),
+            userIndents: JSON.parse(localStorage.getItem('userIndents') || '[]')
+        };
+
+        // DOM ELEMENTS
+        const viewport = document.getElementById('app-viewport');
+        const monthlySubmenu = document.getElementById('monthly-submenu');
+        const alertCountBadge = document.getElementById('alert-count');
+
+        // INITIALIZATION
+        function init() {
+            lucide.createIcons();
+            setupNavigation();
+            renderView('dashboard');
+            
+            // Populate Month Submenu
+            const months = Object.keys(SYSTEM_DATA.sheets).filter(s => s.includes(' 202'));
+            months.sort((a, b) => new Date(a) - new Date(b));
+
+            months.forEach(month => {
+                const div = document.createElement('div');
+                div.className = 'nav-item nav-subitem';
+                div.textContent = month;
+                div.onclick = () => {
+                    state.selectedMonth = month;
+                    renderView('monthly-view');
+                    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                    document.getElementById('monthly-nav').classList.add('active');
+                };
+                monthlySubmenu.appendChild(div);
+            });
+
+            setTimeout(() => {
+                document.getElementById('loader-overlay').style.display = 'none';
+            }, 800);
+        }
+
+        function setupNavigation() {
+            document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                    item.classList.add('active');
+                    renderView(item.getAttribute('data-view'));
+                });
+            });
+            document.getElementById('monthly-nav').addEventListener('click', () => {
+                monthlySubmenu.classList.toggle('open');
+            });
+        }
+
+        function renderView(viewName) {
+            state.view = viewName;
+            viewport.innerHTML = '';
+            viewport.className = 'content animate-fade';
+            
+            switch(viewName) {
+                case 'dashboard': renderDashboard(); break;
+                case 'batch-register': renderBatchRegister(); break;
+                case 'indent-demand': renderIndentDemand(); break;
+                case 'monthly-view': renderMonthlyView(); break;
+                case 'batch-entry': renderBatchEntryForm(); break;
+                case 'receiving-entry': renderReceivingEntryForm(); break;
+                case 'batch-inventory': renderBatchInventory(); break;
+                case 'alerts': renderAlerts(); break;
+                case 'export': renderExport(); break;
+            }
+            lucide.createIcons();
+        }
+
+        function excelDateToJS(serial) {
+            const n = Number(serial);
+            if (isNaN(n) || n < 1 || n > 100000) return serial;
+            
+            // Excel date serial 1 = Jan 1, 1900. JS Date(1899, 11, 30) is the base.
+            const date = new Date(1899, 11, 30 + n);
+            if (isNaN(date.getTime())) return serial;
+            
+            const day = date.getDate().toString().padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const weekday = weekdays[date.getDay()];
+            
+            return `${day}-${month}-${year} (${weekday})`;
+        }
+
+        function getSheetMatrix(sheetName) {
+            const rows = SYSTEM_DATA.sheets[sheetName];
+            if (!rows) return [];
+            let maxR = 0, maxC = 0;
+            rows.forEach(r => {
+                if (r.r > maxR) maxR = r.r;
+                Object.keys(r.c).forEach(c => {
+                    if (parseInt(c) > maxC) maxC = parseInt(c);
+                });
+            });
+            const matrix = Array.from({length: maxR + 1}, () => Array(maxC + 1).fill(''));
+            rows.forEach(r => {
+                Object.entries(r.c).forEach(([cIdx, val]) => {
+                    let cellVal = val;
+                    // 1. Decode drug name if it's an index (Column 0, Row >= 3)
+                    if (sheetName !== 'Dashboard' && cIdx == "0" && r.r >= 3 && typeof val === 'number') {
+                        cellVal = SYSTEM_DATA.drugs[val];
+                    } 
+                    // 2. Detect and format dates (Serial numbers between 40000 and 60000)
+                    else if (val !== null && val !== undefined && val !== '') {
+                        const n = Number(val);
+                        if (!isNaN(n) && n > 40000 && n < 60000 && /^\d+$/.test(String(val))) {
+                            cellVal = excelDateToJS(n);
+                        }
+                    }
+                    matrix[r.r][parseInt(cIdx)] = cellVal;
+                });
+            });
+            return matrix;
+        }
+
+        function renderDashboard() {
+            const matrix = getSheetMatrix('Dashboard');
+            const drugsCount = SYSTEM_DATA.drugs.length;
+            const batchCount = SYSTEM_DATA.sheets['Batch Register'].length + state.userBatches.length;
+            
+            viewport.innerHTML = `
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Total Drugs Tracked</span>
+                        <span class="stat-val">${drugsCount}</span>
+                        <div style="font-size: 0.75rem; color: var(--success); font-weight: 600;">+24% from last month</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: var(--secondary);">
+                        <span class="stat-label">Total Active Batches</span>
+                        <span class="stat-val">${batchCount}</span>
+                        <div style="font-size: 0.75rem; color: var(--info); font-weight: 600;">In System</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: var(--warning);">
+                        <span class="stat-label">Expiring Soon</span>
+                        <span class="stat-val">12</span>
+                        <div style="font-size: 0.75rem; color: var(--warning); font-weight: 600;">Action Required</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: var(--danger);">
+                        <span class="stat-label">Low Stock Alerts</span>
+                        <span class="stat-val">8</span>
+                        <div style="font-size: 0.75rem; color: var(--danger); font-weight: 600;">Critical Inventory</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h3 class="card-title">System Overview & Guide</h3></div>
+                    <div style="padding: 24px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+                            <div>
+                                <h4 style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;"><i data-lucide="info"></i> Quick Start Guide</h4>
+                                <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
+                                    ${matrix.filter(r => r[1] && r[1].match(/^\d\./)).map(r => `<li>${r[1]}</li>`).join('')}
+                                </ul>
+                            </div>
+                            <div style="background: var(--bg); padding: 20px; border-radius: var(--radius);">
+                                <h4 style="margin-bottom: 12px;">Stock Indicators</h4>
+                                <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                                    <span class="badge badge-safe">High Stock</span>
+                                    <span class="badge badge-warning">Medium Stock</span>
+                                    <span class="badge badge-expired">Low Stock</span>
+                                </div>
+                                <h4 style="margin-bottom: 12px;">System Stats</h4>
+                                <div style="font-size: 0.9rem; color: var(--text-muted);">
+                                    <p>• Tracking Period: July 2025 – March 2027</p>
+                                    <p>• Total Months: 21</p>
+                                    <p>• Last Updated: May 2026</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBatchRegister() {
+            const matrix = getSheetMatrix('Batch Register');
+            let hIdx = matrix.findIndex(r => r.includes('Drug Name'));
+            if (hIdx === -1) hIdx = 1;
+            const headers = matrix[hIdx];
+            const data = matrix.slice(hIdx + 1);
+
+            viewport.innerHTML = `
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Master Batch Register</h3>
+                        <button class="btn btn-primary" onclick="renderView('batch-entry')"><i data-lucide="plus"></i> Add New Batch</button>
+                    </div>
+                    <div class="table-container">
+                        <table id="batch-table" class="display">
+                            <thead><tr>${headers.map(h => `<th>${h || ''}</th>`).join('')}</tr></thead>
+                            <tbody>${data.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            $('#batch-table').DataTable({ pageLength: 25, responsive: true });
+        }
+
+        function renderIndentDemand() {
+            const matrix = getSheetMatrix('Indent Demand');
+            let hIdx = matrix.findIndex(r => r.includes('Drug Name'));
+            if (hIdx === -1) hIdx = 1;
+            const headers = matrix[hIdx];
+            const data = matrix.slice(hIdx + 1);
+
+            viewport.innerHTML = `
+                <div class="card">
+                    <div class="card-header"><h3 class="card-title">Indent & Requisition Demand</h3></div>
+                    <div class="table-container">
+                        <table id="indent-table" class="display">
+                            <thead><tr>${headers.map(h => `<th>${h || ''}</th>`).join('')}</tr></thead>
+                            <tbody>${data.map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            $('#indent-table').DataTable({ pageLength: 25 });
+        }
+
+        function renderMonthlyView() {
+            const matrix = getSheetMatrix(state.selectedMonth);
+            viewport.innerHTML = `
+                <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="font-family: Nunito; font-weight: 800;">${state.selectedMonth}</h2>
+                </div>
+                <div class="card">
+                    <div class="excel-grid">
+                        <table>
+                            <thead>
+                                <tr>${matrix[1].map(h => `<th>${h || ''}</th>`).join('')}</tr>
+                                <tr>${matrix[2].map(h => `<th>${h || ''}</th>`).join('')}</tr>
+                            </thead>
+                            <tbody>${matrix.slice(3).map(row => `<tr>${row.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBatchEntryForm() {
+            viewport.innerHTML = `
+                <div class="card" style="max-width: 800px; margin: 0 auto;">
+                    <div class="card-header"><h3 class="card-title">New Batch Entry</h3></div>
+                    <div style="padding: 32px;">
+                        <form id="batch-form">
+                            <div class="form-grid">
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label>Drug Name</label>
+                                    <select id="f-drug" required>
+                                        <option value="">-- Select Drug --</option>
+                                        ${SYSTEM_DATA.drugs.map(d => `<option value="${d}">${d}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group"><label>Batch Number</label><input type="text" id="f-batch" required></div>
+                                <div class="form-group"><label>Quantity</label><input type="number" id="f-qty" required></div>
+                                <div class="form-group"><label>MFG Date</label><input type="date" id="f-mfg"></div>
+                                <div class="form-group"><label>Expiry Date</label><input type="date" id="f-exp" required></div>
+                            </div>
+                            <div style="margin-top: 32px; display: flex; gap: 12px; justify-content: flex-end;">
+                                <button type="button" class="btn btn-outline" onclick="renderView('dashboard')">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Batch</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.getElementById('batch-form').onsubmit = (e) => {
+                e.preventDefault();
+                const entry = { drug: $('#f-drug').val(), batch: $('#f-batch').val(), qty: $('#f-qty').val(), exp: $('#f-exp').val(), id: Date.now() };
+                state.userBatches.push(entry);
+                localStorage.setItem('userBatches', JSON.stringify(state.userBatches));
+                alert('Batch saved!');
+                renderView('batch-register');
+            };
+        }
+
+        function renderReceivingEntryForm() { viewport.innerHTML = '<div class="card"><div style="padding: 24px;">Receiving Entry [Module 6]</div></div>'; }
+        function renderBatchInventory() { viewport.innerHTML = '<div class="card"><div style="padding: 24px;">Batch-wise Stock [Module 7]</div></div>'; }
+        function renderAlerts() { viewport.innerHTML = '<div class="card"><div style="padding: 24px;">Alerts [Module 8]</div></div>'; }
+        function renderExport() { viewport.innerHTML = '<div class="card"><div style="padding: 24px;">Export [Module 9]</div></div>'; }
+
+        document.getElementById('global-search').oninput = (e) => {
+            const val = e.target.value.toLowerCase();
+            if (val.length > 2) {
+                if (state.view !== 'batch-register') renderView('batch-register');
+                $('#batch-table').DataTable().search(val).draw();
+            }
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>
